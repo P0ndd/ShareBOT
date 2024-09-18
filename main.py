@@ -7,6 +7,7 @@ from server import server_on
 
 bot = commands.Bot(command_prefix='/', intents=discord.Intents.all())
 
+
 def generate_random_number():
     return ''.join([str(random.randint(0, 9)) for _ in range(16)])
 

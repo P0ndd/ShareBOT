@@ -1,11 +1,16 @@
 import os
 import random
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.ui import Button, View
 from server import server_on
+from datetime import datetime, timedelta
+import pytz  # Import pytz for timezone conversion
 
 bot = commands.Bot(command_prefix='/', intents=discord.Intents.all())
+
+# Set Thailand timezone
+THAILAND_TZ = pytz.timezone('Asia/Bangkok')
 
 # Function to generate a random number for the links
 def generate_random_number():
@@ -29,6 +34,22 @@ def generate_urls():
 # Dictionary to track button press cooldowns for each user
 cooldowns = {}
 
+# Task to check and notify users when cooldown expires
+@tasks.loop(minutes=1)
+async def check_cooldown():
+    current_time = discord.utils.utcnow().timestamp()
+    for user_id, cooldown_time in list(cooldowns.items()):
+        if cooldown_time <= current_time:
+            user = await bot.fetch_user(user_id)
+            if user:
+                try:
+                    # ส่งข้อความส่วนตัว (DM) แทนการส่งในห้องแชท
+                    await user.send(f"คูลดาวน์ของคุณหมดแล้ว! คุณสามารถโปรโมทได้อีกครั้ง")
+                except discord.Forbidden:
+                    print(f"ไม่สามารถส่งข้อความส่วนตัวไปยัง {user.name} ได้")
+            del cooldowns[user_id]  # ลบผู้ใช้จากคูลดาวน์ลิสต์
+
+
 # Persistent View class with a button and custom_id for persistence
 class MyPersistentView(View):
     def __init__(self):
@@ -42,8 +63,14 @@ class MyPersistentView(View):
         # Check if the user is on cooldown
         if user_id in cooldowns and cooldowns[user_id] > current_time:
             remaining_time = cooldowns[user_id] - current_time
+            finish_time = datetime.utcnow() + timedelta(seconds=remaining_time)
+            
+            # Convert finish time to Thailand timezone
+            finish_time_local = finish_time.replace(tzinfo=pytz.utc).astimezone(THAILAND_TZ)
+            formatted_time = finish_time_local.strftime("%I:%M:%S %p")  # 12-hour format with AM/PM
+            
             await interaction.response.send_message(
-                f"กรุณารอ {int(remaining_time // 60)} นาทีเพื่อใช้งานอีกครั้ง", ephemeral=True
+                f"กรุณารออีก {int(remaining_time // 60)} นาที คูลดาวน์จะหมดตอน {formatted_time} (เวลาไทย)", ephemeral=True
             )
             return
 
@@ -64,6 +91,9 @@ async def on_ready():
     # Add the persistent view when the bot starts up
     bot.add_view(MyPersistentView())
     print("Persistent view added")
+
+    # Start the cooldown checking task
+    check_cooldown.start()
 
 # Command to generate and send the embed with a button
 @bot.command()

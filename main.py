@@ -22,7 +22,6 @@ def generate_urls():
         "https://www.facebook.com/groups/FiveMThailand/",
         "https://www.facebook.com/groups/289008456634964/",
         "https://www.facebook.com/groups/fivemthailandcommunity/"
-        "https://www.facebook.com/groups/fivemofficiathailand/posts/"
     ]
 
     generated_links = []

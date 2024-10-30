@@ -21,13 +21,17 @@ def generate_urls():
     links = [
         "https://www.facebook.com/groups/FiveMThailand/",
         "https://www.facebook.com/groups/289008456634964/",
-        "https://www.facebook.com/groups/fivemthailandcommunity/"
+        "https://www.facebook.com/groups/fivemthailandcommunity/",
+        "https://www.facebook.com/groups/fivemofficiathailand/posts/"
     ]
 
     generated_links = []
-    for link in links:
+    for i, link in enumerate(links):
         random_number = generate_random_number()
         full_link = link + random_number
+        # เพิ่มข้อความพิเศษสำหรับลิงก์สุดท้าย
+        if i == len(links) - 1:  # ถ้าเป็นลิงก์สุดท้าย
+            full_link += " <<< For Server SEVEN CITY"
         generated_links.append(full_link)
     return generated_links
 

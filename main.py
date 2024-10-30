@@ -31,7 +31,7 @@ def generate_urls():
         full_link = link + random_number
         # เพิ่มข้อความพิเศษสำหรับลิงก์สุดท้าย
         if i == len(links) - 1:  # ถ้าเป็นลิงก์สุดท้าย
-            full_link += " <<< For Server SEVEN CITY"
+            full_link += "/ <<< For Server SEVEN CITY"
         generated_links.append(full_link)
     return generated_links
 

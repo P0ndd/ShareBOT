@@ -5,7 +5,7 @@ from discord.ext import commands, tasks
 from discord.ui import Button, View
 from server import server_on
 from datetime import datetime, timedelta
-import pytz  # Import pytz for timezone conversion
+import pytz 
 
 bot = commands.Bot(command_prefix='/', intents=discord.Intents.all())
 
@@ -56,22 +56,23 @@ async def check_cooldown():
     current_time = discord.utils.utcnow().timestamp()
     for user_id, cooldowns_data in list(cooldowns.items()):
         aonatown_cooldown, sevencity_cooldown = cooldowns_data
-        if aonatown_cooldown <= current_time:
+        if aonatown_cooldown <= current_time and aonatown_cooldown != 0:
             user = await bot.fetch_user(user_id)
             if user:
                 try:
                     await user.send(f"คูลดาวน์ของปุ่ม AONATOWN ของคุณหมดแล้ว! คุณสามารถกดปุ่มนี้ได้อีกครั้ง")
                 except discord.Forbidden:
                     print(f"Unable to send private message to {user.name}")
-            del cooldowns[user_id][0]  # Remove AONATOWN cooldown
-        if sevencity_cooldown <= current_time:
+            cooldowns[user_id][0] = 0  # Reset AONATOWN cooldown
+
+        if sevencity_cooldown <= current_time and sevencity_cooldown != 0:
             user = await bot.fetch_user(user_id)
             if user:
                 try:
                     await user.send(f"คูลดาวน์ของปุ่ม SEVEN CITY ของคุณหมดแล้ว! คุณสามารถกดปุ่มนี้ได้อีกครั้ง")
                 except discord.Forbidden:
                     print(f"Unable to send private message to {user.name}")
-            del cooldowns[user_id][1]  # Remove SEVEN CITY cooldown
+            cooldowns[user_id][1] = 0  # Reset SEVEN CITY cooldown
 
 # Persistent View class with buttons and custom_id for persistence
 class MyPersistentView(View):
@@ -126,7 +127,7 @@ class MyPersistentView(View):
         # Generate URLs and send the result
         generated_links = generate_sevencity_urls()
         result = "```\n" + "\n".join(generated_links) + "\n```"
-
+        
         await interaction.response.send_message(result, ephemeral=True)
 
         # Set the cooldown for the user (1 hour = 3600 seconds)

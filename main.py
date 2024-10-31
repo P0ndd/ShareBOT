@@ -79,7 +79,7 @@ class MyPersistentView(View):
     def __init__(self):
         super().__init__(timeout=None)  # Persistent view, never times out
 
-    @discord.ui.button(label="AONATOWN", style=discord.ButtonStyle.primary, custom_id="aonatown_button")
+    @discord.ui.button(label="AONA TOWN", style=discord.ButtonStyle.primary, custom_id="aonatown_button")
     async def aonatown_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_id = interaction.user.id
         current_time = discord.utils.utcnow().timestamp()

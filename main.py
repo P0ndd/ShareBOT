@@ -5,7 +5,9 @@ from discord.ext import commands, tasks
 from discord.ui import Button, View
 from server import server_on
 from datetime import datetime, timedelta
-import pytz 
+import pytz
+from collections import defaultdict
+import asyncio
 
 bot = commands.Bot(command_prefix='/', intents=discord.Intents.all())
 
@@ -23,12 +25,7 @@ def generate_aonatown_urls():
         "https://www.facebook.com/groups/289008456634964/",
         "https://www.facebook.com/groups/fivemthailandcommunity/",
     ]
-
-    generated_links = []
-    for i, link in enumerate(links):
-        random_number = generate_random_number()
-        full_link = link + random_number
-        generated_links.append(full_link)
+    generated_links = [link + generate_random_number() for link in links]
     return generated_links
 
 def generate_sevencity_urls():
@@ -39,40 +36,35 @@ def generate_sevencity_urls():
         "https://www.facebook.com/groups/fivemthailandcommunity/posts/",
         "https://www.facebook.com/groups/686633655307229/posts/"
     ]
-
-    generated_links = []
-    for i, link in enumerate(links):
-        random_number = generate_random_number()
-        full_link = f"{link}{random_number}/"
-        generated_links.append(full_link)
+    generated_links = [f"{link}{generate_random_number()}/" for link in links]
     return generated_links
 
 # Dictionary to track button press cooldowns for each user
-cooldowns = {}
+cooldowns = defaultdict(lambda: [0, 0])  # Default cooldowns for AONATOWN and SEVEN CITY
 
 # Task to check and notify users when cooldown expires
 @tasks.loop(minutes=1)
 async def check_cooldown():
     current_time = discord.utils.utcnow().timestamp()
     for user_id, cooldowns_data in list(cooldowns.items()):
-        aonatown_cooldown, sevencity_cooldown = cooldowns_data
-        if aonatown_cooldown <= current_time and aonatown_cooldown != 0:
+        try:
+            aonatown_cooldown, sevencity_cooldown = cooldowns_data
             user = await bot.fetch_user(user_id)
-            if user:
-                try:
-                    await user.send(f"คูลดาวน์ของปุ่ม AONATOWN ของคุณหมดแล้ว! คุณสามารถกดปุ่มนี้ได้อีกครั้ง")
-                except discord.Forbidden:
-                    print(f"Unable to send private message to {user.name}")
-            cooldowns[user_id][0] = 0  # Reset AONATOWN cooldown
 
-        if sevencity_cooldown <= current_time and sevencity_cooldown != 0:
-            user = await bot.fetch_user(user_id)
-            if user:
-                try:
+            if aonatown_cooldown <= current_time and aonatown_cooldown != 0:
+                if user:
+                    await user.send(f"คูลดาวน์ของปุ่ม AONATOWN ของคุณหมดแล้ว! คุณสามารถกดปุ่มนี้ได้อีกครั้ง")
+                cooldowns[user_id][0] = 0  # Reset AONATOWN cooldown
+
+            if sevencity_cooldown <= current_time and sevencity_cooldown != 0:
+                if user:
                     await user.send(f"คูลดาวน์ของปุ่ม SEVEN CITY ของคุณหมดแล้ว! คุณสามารถกดปุ่มนี้ได้อีกครั้ง")
-                except discord.Forbidden:
-                    print(f"Unable to send private message to {user.name}")
-            cooldowns[user_id][1] = 0  # Reset SEVEN CITY cooldown
+                cooldowns[user_id][1] = 0  # Reset SEVEN CITY cooldown
+
+        except discord.Forbidden:
+            print(f"Unable to notify user ID {user_id}. They might have disabled DMs.")
+        except Exception as e:
+            print(f"Unexpected error for user ID {user_id}: {e}")
 
 # Persistent View class with buttons and custom_id for persistence
 class MyPersistentView(View):
@@ -84,83 +76,82 @@ class MyPersistentView(View):
         user_id = interaction.user.id
         current_time = discord.utils.utcnow().timestamp()
 
-        # Check if the user is on cooldown for AONATOWN
-        if user_id in cooldowns and cooldowns[user_id][0] > current_time:
+        if cooldowns[user_id][0] > current_time:
             remaining_time = cooldowns[user_id][0] - current_time
             finish_time = datetime.utcnow() + timedelta(seconds=remaining_time)
             finish_time_local = finish_time.replace(tzinfo=pytz.utc).astimezone(THAILAND_TZ)
             formatted_time = finish_time_local.strftime("%I:%M:%S %p")
 
             await interaction.response.send_message(
-                f"Please wait another {int(remaining_time // 60)} minutes. Your AONATOWN cooldown will expire at {formatted_time} (Thailand time)", ephemeral=True
+                f"Please wait another {int(remaining_time // 60)} minutes. Your AONATOWN cooldown will expire at {formatted_time} (Thailand time)",
+                ephemeral=True
             )
             return
 
-        # Generate URLs and send the result
         generated_links = generate_aonatown_urls()
         result = "```\n" + "\n".join(generated_links) + "\n```"
-
         await interaction.response.send_message(result, ephemeral=True)
 
-        # Set the cooldown for the user (2 hours = 7200 seconds)
-        if user_id not in cooldowns:
-            cooldowns[user_id] = [0, 0]  # Initialize with 0 for both AONATOWN and SEVEN CITY
-        cooldowns[user_id][0] = current_time + 7200
+        cooldowns[user_id][0] = current_time + 7200  # 2 hours cooldown
 
     @discord.ui.button(label="SEVEN CITY", style=discord.ButtonStyle.primary, custom_id="sevencity_button")
     async def sevencity_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_id = interaction.user.id
         current_time = discord.utils.utcnow().timestamp()
 
-        # Check if the user is on cooldown for SEVEN CITY
-        if user_id in cooldowns and cooldowns[user_id][1] > current_time:
+        if cooldowns[user_id][1] > current_time:
             remaining_time = cooldowns[user_id][1] - current_time
             finish_time = datetime.utcnow() + timedelta(seconds=remaining_time)
             finish_time_local = finish_time.replace(tzinfo=pytz.utc).astimezone(THAILAND_TZ)
             formatted_time = finish_time_local.strftime("%I:%M:%S %p")
 
             await interaction.response.send_message(
-                f"Please wait another {int(remaining_time // 60)} minutes. Your SEVEN CITY cooldown will expire at {formatted_time} (Thailand time)", ephemeral=True
+                f"Please wait another {int(remaining_time // 60)} minutes. Your SEVEN CITY cooldown will expire at {formatted_time} (Thailand time)",
+                ephemeral=True
             )
             return
 
-        # Generate URLs and send the result
         generated_links = generate_sevencity_urls()
         result = "```\n" + "\n".join(generated_links) + "\n```"
-        
         await interaction.response.send_message(result, ephemeral=True)
 
-        # Set the cooldown for the user (1 hour = 3600 seconds)
-        if user_id not in cooldowns:
-            cooldowns[user_id] = [0, 0]  # Initialize with 0 for both AONATOWN and SEVEN CITY
-        cooldowns[user_id][1] = current_time + 3600
+        cooldowns[user_id][1] = current_time + 3600  # 1 hour cooldown
 
 # Event that runs when the bot is ready
 @bot.event
 async def on_ready():
     print(f'{bot.user} is ready')
 
-    # Add the persistent view when the bot starts up
     bot.add_view(MyPersistentView())
     print("Persistent view added")
 
-    # Start the cooldown checking task
     check_cooldown.start()
+
+    for user_id in cooldowns.keys():
+        try:
+            user = await bot.fetch_user(user_id)
+            if user:
+                await user.send("บอทกลับมาออนไลน์แล้ว คุณสามารถใช้งานได้ตามปกติ 🎉")
+            await asyncio.sleep(1)  # Avoid hitting rate limits
+        except discord.Forbidden:
+            print(f"Unable to send private message to user ID {user_id}.")
+        except Exception as e:
+            print(f"Unexpected error while notifying user ID {user_id}: {e}")
 
 # Command to generate and send the embed with buttons
 @bot.command()
 async def generate_embed(ctx):
-    # Delete the user's command message
-    await ctx.message.delete()
+    try:
+        await ctx.message.delete()
 
-    embed = discord.Embed(
-        title="สร้างลิงค์แชร์ Facebook",
-        color=0x00ff00
-    )
-
-    # Send the message with the persistent buttons
-    await ctx.send(embed=embed, view=MyPersistentView())
+        embed = discord.Embed(
+            title="สร้างลิงค์แชร์ Facebook",
+            color=0x00ff00
+        )
+        await ctx.send(embed=embed, view=MyPersistentView())
+    except Exception as e:
+        print(f"Error in generate_embed command: {e}")
 
 # Start the bot
 server_on()
-bot.run(os.getenv('TOKEN'))  # Use environment variable for token
+bot.run(os.getenv('TOKEN'))

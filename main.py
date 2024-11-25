@@ -7,11 +7,8 @@ from server import server_on
 from datetime import datetime, timedelta
 import pytz
 from collections import defaultdict
-from dotenv import load_dotenv
 import asyncio
 
-# Load environment variables
-load_dotenv()
 
 bot = commands.Bot(command_prefix='/', intents=discord.Intents.all())
 

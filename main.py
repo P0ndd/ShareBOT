@@ -187,9 +187,9 @@ async def generate_embed(ctx):
             title="สร้างลิงค์แชร์ Facebook",
             color=0x00ff00
         )
-        embed.add_field(name="AONA TOWN", value="Get your AONA TOWN links", inline=False)
-        embed.add_field(name="SEVEN CITY", value="Get your SEVEN CITY links", inline=False)
-        embed.add_field(name="Info", value="Check total users and cooldowns", inline=False)
+       # embed.add_field(name="AONA TOWN", value="Get your AONA TOWN links", inline=False)
+       # embed.add_field(name="SEVEN CITY", value="Get your SEVEN CITY links", inline=False)
+       # embed.add_field(name="Info", value="Check total users and cooldowns", inline=False)
 
         await ctx.send(embed=embed, view=MyPersistentView())
     except Exception as e:
